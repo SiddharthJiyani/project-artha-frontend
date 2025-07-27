@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 5% 96%;
+    --foreground: 224 71% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 71% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71% 4%;
+    --primary: 170 100% 36%; /*#00b899*/
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 90%;
+    --secondary-foreground: 224 71% 4%;
+    --muted: 240 5% 90%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 169 80% 40%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 243 94% 59%;
+    --chart-1: 243 94% 59%;
+    --chart-2: 169 80% 40%;
+    --chart-3: 49 92% 57%;
+    --chart-4: 24 9.8% 70%;
+    --chart-5: 215 9% 51%;
+    --radius: 0.5rem;
+  }
+.dark {
+  /* Main Background: #0b0f10 */
+  --background: 180 18% 5%;
+  
+  /* Primary Text: #e5e5e5 */
+  --foreground: 0 0% 90%;
+  
+  /* Card/Surface Background: #101415 */
+  --card: 192 18% 7%;
+  --card-foreground: 0 0% 90%;
+  
+  /* Popovers: slightly elevated from main background */
+  --popover: 192 10% 8%;
+  --popover-foreground: 0 0% 90%;
+
+  /* Primary Accent: #4f46e5 (Indigo) */
+  --primary: 243 94% 59%;
+  --primary-foreground: 0 0% 100%;
+
+  /* Elevated surfaces: #1a1a1a - #202020 style */
+  --secondary: 0 0% 12%;
+  --secondary-foreground: 0 0% 69%;
+
+  /* Muted / Lower-priority background */
+  --muted: 0 0% 11%;
+  --muted-foreground: 0 0% 50%;
+
+  /* Secondary Accent: Teal #14b8a6 */
+  --accent: 169 80% 40%;
+  --accent-foreground: 0 0% 90%;
+
+  /* Destructive: toned down red from #ef4444 */
+  --destructive: 0 75% 60%; /* #e85d5d */
+  --destructive-foreground: 0 0% 100%;
+
+  /* Borders */
+  --border: 0 0% 18%;
+  --input: 0 0% 13%;
+  --ring: 243 94% 59%;
+
+  /* Status / semantic */
+  --success: 142 68% 45%; /* #22c55e */
+  --success-foreground: 0 0% 100%;
+
+  --warning: 43 96% 56%; /* #f59e0b */
+  --warning-foreground: 0 0% 100%;
+
+/* Chart Colors – Subtle */
+--chart-1: 243 70% 55%; /* Subtle Indigo */
+--chart-2: 169 70% 42%; /* Subtle Teal */
+--chart-3: 142 66% 40%; /* Subtle Green */
+--chart-4: 43 76% 50%;  /* Subtle Amber */
+--chart-5: 0 60% 50%;   /* Subtle Red */
+
+}
+
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .glow-gold {
+    box-shadow: 0 0 15px 2px hsl(var(--chart-3) / 0.5);
+  }
+  .glow-primary {
+    box-shadow: 0 0 20px 4px hsl(var(--primary) / 0.3);
+  }
+
+  .text-glow {
+    text-shadow: 0 0 8px hsl(var(--primary) / 0.5);
+  }
+  .dark .text-glow {
+    text-shadow: 0 0 10px hsl(var(--primary) / 0.6);
+  }
+
+  /* Subtle border utilities for dark mode */
+  .border-subtle {
+    @apply border-gray-700;
+  }
+  .dark .border-subtle {
+    border-color: hsl(0 0% 17%); /* #2a2a2a - barely visible separation */
+  }
+
+  /* Elevated surface background */
+  .bg-elevated {
+    @apply bg-gray-100;
+  }
+  .dark .bg-elevated {
+    background-color: hsl(0 0% 13%); /* #202020 - more elevated surfaces */
+  }
+}
