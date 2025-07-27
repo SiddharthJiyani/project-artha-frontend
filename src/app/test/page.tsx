@@ -89,7 +89,7 @@ export default function TestPage() {
                     <h3 className="font-semibold">Expected Servers:</h3>
                     <ul className="list-disc list-inside space-y-1">
                       <li>Next.js Frontend: <code>http://localhost:3000</code></li>
-                      <li>Go Backend: <code>http://localhost:8080</code></li>
+                      <li>Go Backend: <code>https://artha-mcp-server.onrender.com</code></li>
                     </ul>
                   </div>
                 </div>
