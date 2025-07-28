@@ -1,9 +1,3 @@
-// import ChatLayout from './chat-layout';
-
-// export default function ChatPage() {
-//   return <ChatLayout />;
-// }
-
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -66,6 +60,7 @@ interface FirebaseMessage {
   llm_response: string;
   query_user: string;
   timestamp: number;
+  timestamps?: number; // Firebase uses plural field
 }
 
 interface Message {
@@ -101,60 +96,93 @@ const ChatSidebar = ({
   onToggleCollapse: () => void;
 }) => {
   const { user: firebaseUser } = useUser(userId);
+  console.log("Firebase user:", firebaseUser);
 
-  // Get chat sessions from Firebase user data
+  // Get chat sessions from Firebase user data - CLEAN & SIMPLE
   const chatSessions = React.useMemo(() => {
-    if (!firebaseUser?.chats) return [];
+    if (!firebaseUser?.chats) {
+      return [];
+    }
 
-    return Object.entries(firebaseUser.chats)
-      .map(([sessionId, chatData]: [string, any]) => {
+    const sessions = Object.entries(firebaseUser.chats).map(
+      ([sessionId, chatData]: [string, any]) => {
         const messages = Object.values(chatData || {}) as FirebaseMessage[];
-        const sortedMessages = messages.sort(
-          (a, b) => a.timestamp - b.timestamp
+
+        // Debug: Log the actual message structure
+        console.log("Session:", sessionId, "Messages sample:", messages[0]);
+
+        // Find the latest timestamp - use 'timestamps' as per Firebase structure
+        const timestamps = messages
+          .map((msg) => msg.timestamps || msg.timestamp || 0)
+          .filter((t) => t > 0);
+        const latestTimestamp =
+          timestamps.length > 0 ? Math.max(...timestamps) : 0;
+
+        console.log(
+          "Session:",
+          sessionId,
+          "Latest timestamp:",
+          latestTimestamp
         );
 
-        const firstMessage = sortedMessages.find((msg) => msg.query_user);
-        const lastMessage = sortedMessages[sortedMessages.length - 1];
+        // Get first user message for title
+        const firstUserMessage = messages.find((msg) => msg.query_user);
+        const title =
+          firstUserMessage?.query_user || `Chat ${sessionId.substring(0, 8)}`;
+        
+        // Adjust title truncation for better fit
+        const displayTitle = title.length > 35 ? title.substring(0, 35) + "..." : title;
 
         return {
           sessionId,
-          session: chatData,
-          title:
-            firstMessage?.query_user?.length > 40
-              ? firstMessage.query_user.substring(0, 40) + "..."
-              : firstMessage?.query_user ||
-                `Chat ${sessionId.substring(0, 8)}...`,
-          lastMessage:
-            lastMessage?.llm_response?.length > 60
-              ? lastMessage.llm_response.substring(0, 60) + "..."
-              : lastMessage?.llm_response || "New conversation",
-          timestamp: lastMessage?.timestamp || Date.now(),
+          title: displayTitle,
+          timestamp: latestTimestamp,
           messageCount: messages.length,
         };
-      })
-      .sort((a, b) => b.timestamp - a.timestamp);
+      }
+    );
+
+    // Sort by timestamp - newest first
+    return sessions.sort((a, b) => b.timestamp - a.timestamp);
   }, [firebaseUser?.chats]);
 
   const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (!timestamp || timestamp <= 0) {
+      return "Unknown";
+    }
 
-    if (days === 0) return "Today";
-    if (days === 1) return "Yesterday";
-    if (days < 7) return `${days} days ago`;
-    return date.toLocaleDateString();
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      if (days === 0) return "Today";
+      if (days === 1) return "Yesterday";
+      if (days < 7) return `${days} days ago`;
+      return date.toLocaleDateString();
+    } catch (error) {
+      return "Invalid date";
+    }
   };
 
   return (
     <motion.div
-      animate={{ width: isCollapsed ? 60 : 280 }}
+      animate={{ width: isCollapsed ? 60 : 300 }} // Increased width from 280 to 300
       className="h-full bg-card border-r border-border flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
-          {!isCollapsed && <h2 className="font-semibold text-lg">Chats</h2>}
+          {!isCollapsed && (
+            <div>
+              <h2 className="font-semibold text-lg">Chats</h2>
+              {firebaseUser?.chats && (
+                <p className="text-xs text-muted-foreground">
+                  {chatSessions.length} conversations found
+                </p>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <Button
               onClick={onNewChat}
@@ -216,41 +244,41 @@ const ChatSidebar = ({
         ) : (
           <div className="p-2">
             {chatSessions.map(
-              ({ sessionId, title, lastMessage, timestamp, messageCount }) => (
+              ({ sessionId, title, timestamp, messageCount }) => (
                 <motion.div
                   key={sessionId}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
                   className={cn(
-                    "flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors mb-2 group",
+                    "flex items-start gap-2.5 p-2.5 rounded-lg cursor-pointer transition-colors mb-1.5 group",
                     activeSession === sessionId
                       ? "bg-primary/10 border border-primary/20"
                       : "hover:bg-accent/10"
                   )}
                   onClick={() => onSessionSelect(sessionId)}>
                   <div className="flex-shrink-0">
-                    <Avatar className="h-8 w-8">
+                    <Avatar className="h-7 w-7">
                       <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                         AI
                       </AvatarFallback>
                     </Avatar>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-sm truncate">{title}</h3>
-                    <p className="text-xs text-muted-foreground truncate mt-1">
-                      {lastMessage}
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <h3 className="font-medium text-sm truncate leading-tight mb-0.5">
+                      {title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground truncate mb-1">
+                      {messageCount}{" "}
+                      {messageCount === 1 ? "message" : "messages"}
                     </p>
-                    <div className="flex items-center justify-between mt-2">
-                      <p className="text-xs text-muted-foreground">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground truncate flex-1 mr-2">
                         {formatDate(timestamp)}
-                      </p>
-                      <Badge variant="outline" className="text-xs">
-                        {messageCount}
-                      </Badge>
+                      </span>
                     </div>
                   </div>
                   {activeSession === sessionId && (
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 self-start mt-0.5">
                       <div className="w-2 h-2 bg-primary rounded-full" />
                     </div>
                   )}
@@ -264,14 +292,23 @@ const ChatSidebar = ({
   );
 };
 
+
 // Message Component
 const MessageBubble = ({ message }: { message: Message }) => {
-  const formatTime = (timestamp: number) =>
-    new Date(timestamp).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
+  const formatTime = (timestamp: number) => {
+    if (!timestamp || timestamp <= 0) return "";
+
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+    } catch (error) {
+      return "";
+    }
+  };
 
   return (
     <motion.div
@@ -338,13 +375,13 @@ const MessageBubble = ({ message }: { message: Message }) => {
           </div>
         </div>
 
-        {/* <div
+        <div
           className={cn(
             "text-xs text-muted-foreground mt-1 px-1",
             message.isUser ? "text-right" : "text-left"
-          )}>2
+          )}>
           {formatTime(message.timestamp)}
-        </div> */} {/* Invalid date problem */}
+        </div>
       </div>
 
       {message.isUser && (
@@ -481,32 +518,45 @@ export default function ChatbotInterface() {
   const { chats, loading: chatsLoading } = useUserChats(userId);
   const { financialSummary } = useFinancialSummary(userId);
 
-  console.log("Firebase User:", firebaseUser);
-  console.log("Chat sessions:", chats);
-
-  // Transform Firebase messages to display format
+  // Transform Firebase messages to display format - keeping timestamps intact
   const transformFirebaseMessages = (chatData: any): Message[] => {
     if (!chatData) return [];
 
     const messages: Message[] = [];
 
-    // Get all message entries and sort by timestamp
+    // Get all message entries and sort by Firebase timestamp
     const messageEntries = Object.entries(chatData) as [
       string,
       FirebaseMessage
     ][];
-    const sortedEntries = messageEntries.sort(
-      ([, a], [, b]) => a.timestamp - b.timestamp
+    const sortedEntries = messageEntries.sort(([, a], [, b]) => {
+      // Sort by Firebase timestamps (plural) field
+      const timestampA = a.timestamps || a.timestamp || 0;
+      const timestampB = b.timestamps || b.timestamp || 0;
+      return timestampA - timestampB;
+    });
+
+    console.log(
+      "Sorted Firebase messages by timestamp:",
+      sortedEntries.map(([id, msg]) => ({ id, timestamp: msg.timestamp }))
     );
 
     sortedEntries.forEach(([messageId, messageData]) => {
+      // Use Firebase timestamps (plural) field correctly
+      const firebaseTimestamp =
+        messageData.timestamps || messageData.timestamp || 0;
+
+      console.log(
+        `Processing message ${messageId}: Firebase timestamp = ${firebaseTimestamp}, type = ${typeof firebaseTimestamp}`
+      );
+
       // Add user message if exists
       if (messageData.query_user) {
         messages.push({
           id: `${messageId}-user`,
           text: messageData.query_user,
           isUser: true,
-          timestamp: messageData.timestamp,
+          timestamp: firebaseTimestamp, // Use exact Firebase timestamp
           messageId: messageId,
         });
       }
@@ -517,24 +567,33 @@ export default function ChatbotInterface() {
           id: `${messageId}-ai`,
           text: messageData.llm_response,
           isUser: false,
-          timestamp: messageData.timestamp + 1, // Slight offset to ensure correct order
+          timestamp: firebaseTimestamp, // Use exact same Firebase timestamp
           messageId: messageId,
         });
       }
     });
 
+    console.log(
+      "Final transformed messages:",
+      messages.map((m) => ({
+        id: m.id,
+        timestamp: m.timestamp,
+        time: new Date(m.timestamp).toLocaleTimeString(),
+      }))
+    );
     return messages;
   };
 
   // Load messages for active session from Firebase
   useEffect(() => {
     if (activeSession && firebaseUser?.chats?.[activeSession]) {
+      console.log("Loading messages for session:", activeSession);
       const chatData = firebaseUser.chats[activeSession];
       const transformedMessages = transformFirebaseMessages(chatData);
       setMessages(transformedMessages);
-
-      console.log("Loaded messages for session:", activeSession);
-      console.log("Transformed messages:", transformedMessages);
+      console.log(
+        `Loaded ${transformedMessages.length} messages for session ${activeSession}`
+      );
     } else if (!activeSession) {
       // Default welcome message for new chat
       setMessages([
@@ -553,6 +612,44 @@ export default function ChatbotInterface() {
       ]);
     }
   }, [activeSession, firebaseUser]);
+
+  // Auto-select first chat session when Firebase data loads
+  useEffect(() => {
+    if (firebaseUser?.chats && !activeSession) {
+      const chatIds = Object.keys(firebaseUser.chats);
+      if (chatIds.length > 0) {
+        // Get the most recent chat by finding the latest timestamp
+        const sortedChats = chatIds
+          .map((sessionId) => {
+            const chatData = firebaseUser.chats[sessionId];
+            const messages = Object.values(chatData || {}) as any[];
+
+            // Find the latest timestamp from Firebase using correct field name
+            let latestTimestamp = 0;
+            messages.forEach((msg) => {
+              const msgTimestamp = msg.timestamps || msg.timestamp || 0;
+              if (msgTimestamp > latestTimestamp) {
+                latestTimestamp = msgTimestamp;
+              }
+            });
+
+            return {
+              sessionId,
+              timestamp: latestTimestamp,
+            };
+          })
+          .sort((a, b) => b.timestamp - a.timestamp);
+
+        console.log(
+          "Auto-selecting most recent chat:",
+          sortedChats[0]?.sessionId,
+          "with timestamp:",
+          sortedChats[0]?.timestamp
+        );
+        setActiveSession(sortedChats[0]?.sessionId || chatIds[0]);
+      }
+    }
+  }, [firebaseUser?.chats, activeSession]);
 
   // Real-time updates - watch for changes in Firebase data
   useEffect(() => {
@@ -623,15 +720,18 @@ export default function ChatbotInterface() {
           ? Object.keys(firebaseUser.chats).length
           : 0,
         dataQualityScore:
-          firebaseUser?.user_state?.data_quality?.data_quality_score || "Good",
+          (firebaseUser as any)?.user_state?.data_quality?.data_quality_score ||
+          "Good",
         availableSources:
-          firebaseUser?.user_state?.data_quality?.available_sources?.join(
-            ", "
-          ) || "Multiple",
+          (
+            firebaseUser as any
+          )?.user_state?.data_quality?.available_sources?.join(", ") ||
+          "Multiple",
         behavioralSummary:
-          firebaseUser?.user_state?.behavioral_summary || "Active user",
+          (firebaseUser as any)?.user_state?.behavioral_summary ||
+          "Active user",
         agentPersona:
-          firebaseUser?.user_state?.agent_persona ||
+          (firebaseUser as any)?.user_state?.agent_persona ||
           "conscientious_extroverted",
         netWorth: financialSummary?.netWorthResponse?.totalNetWorthValue?.units
           ? `${financialSummary.netWorthResponse.totalNetWorthValue.currencyCode} ${financialSummary.netWorthResponse.totalNetWorthValue.units}`
@@ -795,7 +895,7 @@ export default function ChatbotInterface() {
                 <div>
                   <h3 className="font-semibold text-sm">Artha AI</h3>
                   <p className="text-xs text-muted-foreground">
-                    {firebaseUser?.user_state?.agent_persona?.replace(
+                    {(firebaseUser as any)?.user_state?.agent_persona?.replace(
                       "_",
                       " "
                     ) || "Financial Assistant"}
@@ -836,7 +936,6 @@ export default function ChatbotInterface() {
               </div>
             )}
             {messages.map((message) => {
-              console.log("Rendering Firebase message:", message);
               return <MessageBubble key={message.id} message={message} />;
             })}
             <ThinkingIndicator steps={thinkingSteps} isVisible={isLoading} />

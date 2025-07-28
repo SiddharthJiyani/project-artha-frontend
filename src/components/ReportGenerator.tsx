@@ -324,7 +324,7 @@ const ReportGenerator: React.FC = () => {
       {reportData && (
         <div ref={reportRef} className="bg-white">
           {/* Report Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-8 rounded-t-lg">
+          <div className="bg-gradient-to-r from-teal-600 to-emerald-600 text-white p-8 rounded-t-lg">
             <div className="text-center">
               <h1 className="text-4xl font-bold mb-2">Financial Health Report</h1>
               <p className="text-xl opacity-90">Comprehensive Analysis & AI-Powered Insights</p>
