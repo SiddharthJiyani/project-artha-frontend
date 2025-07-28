@@ -317,25 +317,7 @@ export default function EPFPage() {
         initial="hidden"
         animate="visible"
         variants={containerVariants}>
-        {/* Debug Info - Remove in production */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="bg-warning/10 border border-warning/20 p-4 rounded-lg text-sm">
-            <p><strong>Debug Info:</strong></p>
-            <p>Loading: {loading.toString()}</p>
-            <p>Error: {error || 'None'}</p>
-            <p>Has EPF Data: {!!epfData}</p>
-            <p>Processed Data: {!!processedData}</p>
-            {epfData && (
-              <details className="mt-2">
-                <summary>Raw EPF Data</summary>
-                <pre className="mt-2 text-xs overflow-auto max-h-40">
-                  {JSON.stringify(epfData, null, 2)}
-                </pre>
-              </details>
-            )}
-          </div>
-        )}
-        
+
         {/* Header */}
         <motion.div variants={itemVariants}>
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -452,7 +434,7 @@ export default function EPFPage() {
 
         {/* Charts Section */}
         <motion.div
-          className="grid lg:grid-cols-2 gap-6"
+          className="grid lg:grid-cols-2 gap-6 "
           variants={containerVariants}>
           {/* Balance Distribution Pie Chart */}
           <motion.div variants={itemVariants}>

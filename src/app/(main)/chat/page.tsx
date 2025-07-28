@@ -250,7 +250,7 @@ const ChatSidebar = ({
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}
                   className={cn(
-                    "flex items-start gap-2.5 p-2.5 rounded-lg cursor-pointer transition-colors mb-1.5 group",
+                    "flex items-start gap-2.5 p-2 rounded-lg cursor-pointer transition-colors mb-1.5 group",
                     activeSession === sessionId
                       ? "bg-primary/10 border border-primary/20"
                       : "hover:bg-accent/10"
@@ -265,7 +265,7 @@ const ChatSidebar = ({
                   </div>
                   <div className="flex-1 min-w-0 overflow-hidden">
                     <h3 className="font-medium text-sm truncate leading-tight mb-0.5">
-                      {title}
+                      {(title.length > 35 ? title.substring(0,30) + "..." : title)}
                     </h3>
                     <p className="text-xs text-muted-foreground truncate mb-1">
                       {messageCount}{" "}
@@ -277,11 +277,7 @@ const ChatSidebar = ({
                       </span>
                     </div>
                   </div>
-                  {activeSession === sessionId && (
-                    <div className="flex-shrink-0 self-start mt-0.5">
-                      <div className="w-2 h-2 bg-primary rounded-full" />
-                    </div>
-                  )}
+                  
                 </motion.div>
               )
             )}
@@ -904,7 +900,7 @@ export default function ChatbotInterface() {
               </div>
               {activeSession && (
                 <Badge variant="outline" className="text-xs">
-                  Session: {activeSession.substring(0, 8)}...
+                  Session Id: {activeSession}
                 </Badge>
               )}
             </div>
@@ -914,9 +910,9 @@ export default function ChatbotInterface() {
                   {Object.keys(firebaseUser.chats || {}).length} chats
                 </Badge>
               )}
-              <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">
+              {/* <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">
                 Firebase Connected
-              </Badge>
+              </Badge> */}
               <Button variant="ghost" size="sm">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -946,7 +942,7 @@ export default function ChatbotInterface() {
         <div className="border-t border-border bg-card p-4">
           <div className="max-w-4xl mx-auto">
             {/* Firebase Data Debug Info */}
-            {activeSession && firebaseUser?.chats?.[activeSession] && (
+            {/* {activeSession && firebaseUser?.chats?.[activeSession] && (
               <div className="mb-3 p-2 bg-accent/20 rounded-lg text-xs">
                 <div className="flex items-center gap-2">
                   <Database className="h-3 w-3 text-primary" />
@@ -957,7 +953,7 @@ export default function ChatbotInterface() {
                   </Badge>
                 </div>
               </div>
-            )}
+            )} */}
 
             {/* Suggestions */}
             <AnimatePresence>

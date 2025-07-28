@@ -30,61 +30,61 @@
     --chart-5: 215 9% 51%;
     --radius: 0.5rem;
   }
-.dark {
-  /* Main Background: #0b0f10 */
-  --background: 180 18% 5%;
-  
-  /* Primary Text: #e5e5e5 */
-  --foreground: 0 0% 90%;
-  
-  /* Card/Surface Background: #101415 */
-  --card: 192 18% 7%;
-  --card-foreground: 0 0% 90%;
-  
-  /* Popovers: slightly elevated from main background */
-  --popover: 192 10% 8%;
-  --popover-foreground: 0 0% 90%;
 
-  /* Primary Accent: #4f46e5 (Indigo) */
-  --primary: 243 94% 59%;
-  --primary-foreground: 0 0% 100%;
+  .dark {
+  /* 🌑 Background & Text */
+  --background: 180 18% 5%; /* #0b0f10 */
+  --foreground: 0 0% 90%;   /* #e5e5e5 */
 
-  /* Elevated surfaces: #1a1a1a - #202020 style */
-  --secondary: 0 0% 12%;
-  --secondary-foreground: 0 0% 69%;
+  /* 🃏 Cards / Surfaces */
+  --card: 192 18% 7%;           /* #101415 */
+  --card-foreground: 0 0% 90%;  /* #e5e5e5 */
 
-  /* Muted / Lower-priority background */
-  --muted: 0 0% 11%;
-  --muted-foreground: 0 0% 50%;
+  --popover: 192 10% 8%;            /* #121617 */
+  --popover-foreground: 0 0% 90%;   /* #e5e5e5 */
 
-  /* Secondary Accent: Teal #14b8a6 */
-  --accent: 169 80% 40%;
-  --accent-foreground: 0 0% 90%;
+  /* ✅ Primary: Match Teal #00b899 (light mode), darkened */
+  --primary: 170 75% 28%;           /* #008f78 */
+  --primary-foreground: 0 0% 100%;  /* #ffffff */
 
-  /* Destructive: toned down red from #ef4444 */
-  --destructive: 0 75% 60%; /* #e85d5d */
-  --destructive-foreground: 0 0% 100%;
+  /* 🧊 Secondary: Light gray variant */
+  --secondary: 180 5% 15%;          /* #232626 */
+  --secondary-foreground: 0 0% 80%; /* #cccccc */
 
-  /* Borders */
-  --border: 0 0% 18%;
-  --input: 0 0% 13%;
-  --ring: 243 94% 59%;
+  /* 🕊️ Muted: Even softer surface */
+  --muted: 180 5% 12%;              /* #1d1f1f */
+  --muted-foreground: 180 4% 50%;   /* #808988 */
 
-  /* Status / semantic */
-  --success: 142 68% 45%; /* #22c55e */
-  --success-foreground: 0 0% 100%;
+  /* 🟢 Accent: Match your light mode accent #26a269 (Hue 169), tuned down */
+  --accent: 169 70% 32%;            /* #1c7455 */
+  --accent-foreground: 0 0% 90%;    /* #e5e5e5 */
 
-  --warning: 43 96% 56%; /* #f59e0b */
-  --warning-foreground: 0 0% 100%;
+  /* 🔴 Destructive */
+  --destructive: 0 70% 52%;         /* #e85d5d */
+  --destructive-foreground: 0 0% 100%; /* #ffffff */
 
-/* Chart Colors – Subtle */
---chart-1: 243 70% 55%; /* Subtle Indigo */
---chart-2: 169 70% 42%; /* Subtle Teal */
---chart-3: 142 66% 40%; /* Subtle Green */
---chart-4: 43 76% 50%;  /* Subtle Amber */
---chart-5: 0 60% 50%;   /* Subtle Red */
+  /* 🧱 Borders & Inputs */
+  --border: 180 4% 22%;             /* #2e3232 */
+  --input: 180 4% 18%;              /* #262a2a */
+  --ring: 170 75% 28%;              /* #008f78 */
 
+  /* ✅ Semantic: Success */
+  --success: 142 60% 35%;           /* #248c56 */
+  --success-foreground: 0 0% 100%;  /* #ffffff */
+
+  /* ⚠️ Warning: Amber muted */
+  --warning: 43 85% 52%;            /* #d8911a */
+  --warning-foreground: 0 0% 100%;  /* #ffffff */
+
+  /* 📊 Chart Colors (matched to light but darker) */
+  --chart-1: 170 75% 28%;           /* #008f78 - Teal (Primary) */
+  --chart-2: 169 65% 33%;           /* #1a745c - Secondary Teal */
+  --chart-3: 49 80% 42%;            /* #c4ab2d - Olive/Gold */
+  --chart-4: 30 70% 45%;            /* #cc7922 - Deep Amber */
+  --chart-5: 215 9% 40%;            /* #505d66 - Muted Blue-Gray */
 }
+
+
 
 }
 
