@@ -275,7 +275,7 @@ export default function PortfolioPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="container mx-auto">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Portfolio</h1>
@@ -327,7 +327,7 @@ export default function PortfolioPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto  space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

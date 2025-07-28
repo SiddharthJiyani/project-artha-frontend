@@ -61,6 +61,7 @@ interface FirebaseMessage {
   query_user: string;
   timestamp: number;
   timestamps?: number; // Firebase uses plural field
+  llm_thinking?: string; // AI thinking process
 }
 
 interface Message {
@@ -69,6 +70,7 @@ interface Message {
   isUser: boolean;
   timestamp: number;
   messageId?: string; // Firebase message ID
+  thinking?: string; // AI thinking process for AI messages
 }
 
 interface ChatSession {
@@ -289,8 +291,169 @@ const ChatSidebar = ({
 };
 
 
+// Enhanced Thinking Bubble Component (like Gemini/Claude)
+const ThinkingBubble = ({ 
+  thinking, 
+  isExpanded = false, 
+  onToggle 
+}: { 
+  thinking: string; 
+  isExpanded: boolean; 
+  onToggle: () => void; 
+}) => {
+  // Debug: Log what thinking content we received
+  console.log('ThinkingBubble received thinking content:', {
+    length: thinking?.length,
+    preview: thinking?.substring(0, 200) + '...',
+    isThinking: thinking?.includes('thinking') || thinking?.includes('analysis'),
+    isResponse: thinking?.includes('Based on') || thinking?.includes('Here\'s')
+  });
+
+  // Enhanced thinking step processing with markdown support
+  const thinkingSteps = thinking
+    .split(/\n+/) // Split by multiple newlines
+    .map(step => step.trim())
+    .filter(step => step.length > 0)
+    .map(step => {
+      // Clean up common prefixes and make more readable
+      let cleanStep = step;
+      
+      // Remove bullet points and numbering at the start
+      cleanStep = cleanStep.replace(/^[\-\*\+•]\s*/, '');
+      cleanStep = cleanStep.replace(/^\d+\.\s*/, '');
+      
+      // If step is very short, treat as a title/header
+      if (cleanStep.length < 50 && !cleanStep.includes('.') && !cleanStep.includes(',')) {
+        cleanStep = `**${cleanStep}**`;
+      }
+      
+      return cleanStep;
+    });
+
+  // Check if content has markdown formatting
+  const hasMarkdown = thinking.includes('**') || thinking.includes('*') || 
+                     thinking.includes('`') || thinking.includes('#') ||
+                     thinking.includes('- ') || thinking.includes('1. ');
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="mb-3 bg-accent/5 border border-accent/20 rounded-lg overflow-hidden">
+      
+      {/* Header - Always visible */}
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between p-3 hover:bg-accent/10 transition-colors">
+        <div className="flex items-center gap-2">
+          <motion.div
+            animate={{
+              rotate: isExpanded ? 180 : 0,
+              scale: [1, 1.1, 1]
+            }}
+            transition={{ duration: 0.2 }}>
+            <Brain className="h-4 w-4 text-primary" />
+          </motion.div>
+          <span className="text-sm font-medium text-muted-foreground">
+            Artha's Thinking Process
+          </span>
+          <Badge variant="outline" className="text-xs">
+            {thinkingSteps.length} steps
+          </Badge>
+        </div>
+        <motion.div
+          animate={{ rotate: isExpanded ? 90 : 0 }}
+          transition={{ duration: 0.2 }}>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </motion.div>
+      </button>
+
+      {/* Expandable thinking content */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="border-t border-accent/20">
+            <div className="p-4 space-y-3 bg-accent/5">
+              {thinkingSteps.map((step, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="flex items-start gap-3">
+                  <motion.div
+                    className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0"
+                    animate={{
+                      scale: [1, 1.2, 1],
+                      opacity: [0.7, 1, 0.7],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      delay: index * 0.5,
+                    }}
+                  />
+                  <div className="text-muted-foreground leading-relaxed flex-1 min-w-0">
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          h1: ({ node, ...props }) => (
+                            <h1 className="font-bold text-sm mb-1 text-foreground" {...props} />
+                          ),
+                          h2: ({ node, ...props }) => (
+                            <h2 className="font-semibold text-sm mb-1 text-foreground" {...props} />
+                          ),
+                          h3: ({ node, ...props }) => (
+                            <h3 className="font-medium text-sm mb-1 text-foreground" {...props} />
+                          ),
+                          p: ({ node, ...props }) => (
+                            <p className="mb-1 last:mb-0 text-sm leading-relaxed" {...props} />
+                          ),
+                          ul: ({ node, ...props }) => (
+                            <ul className="ml-3 mb-1 list-disc text-sm space-y-0.5" {...props} />
+                          ),
+                          ol: ({ node, ...props }) => (
+                            <ol className="ml-3 mb-1 list-decimal text-sm space-y-0.5" {...props} />
+                          ),
+                          li: ({ node, ...props }) => (
+                            <li className="text-sm leading-relaxed" {...props} />
+                          ),
+                          strong: ({ node, ...props }) => (
+                            <strong className="font-semibold text-foreground" {...props} />
+                          ),
+                          em: ({ node, ...props }) => (
+                            <em className="italic" {...props} />
+                          ),
+                          code: ({ node, ...props }) => (
+                            <code className="bg-accent/50 px-1.5 py-0.5 rounded text-xs font-mono border" {...props} />
+                          ),
+                          blockquote: ({ node, ...props }) => (
+                            <blockquote className="border-l-2 border-primary/30 pl-3 italic text-sm bg-accent/20 py-1 rounded-r" {...props} />
+                          ),
+                        }}>
+                        {step}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
+
 // Message Component
 const MessageBubble = ({ message }: { message: Message }) => {
+  const [showThinking, setShowThinking] = useState(false);
+  
   const formatTime = (timestamp: number) => {
     if (!timestamp || timestamp <= 0) return "";
 
@@ -326,6 +489,15 @@ const MessageBubble = ({ message }: { message: Message }) => {
       )}
 
       <div className={cn("max-w-2xl", message.isUser ? "order-first" : "")}>
+        {/* Show thinking bubble for AI messages that have thinking data */}
+        {!message.isUser && message.thinking && (
+          <ThinkingBubble
+            thinking={message.thinking}
+            isExpanded={showThinking}
+            onToggle={() => setShowThinking(!showThinking)}
+          />
+        )}
+
         <div
           className={cn(
             "rounded-2xl px-4 py-3 shadow-sm",
@@ -393,8 +565,8 @@ const MessageBubble = ({ message }: { message: Message }) => {
   );
 };
 
-// Thinking Animation Component
-const ThinkingIndicator = ({
+// Real-time Thinking Animation Component (for live messages)
+const LiveThinkingIndicator = ({
   steps,
   isVisible,
 }: {
@@ -419,7 +591,18 @@ const ThinkingIndicator = ({
           <div className="bg-muted rounded-2xl px-4 py-3 max-w-lg">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+                <motion.div
+                  animate={{
+                    scale: [1, 1.2, 1],
+                    rotate: [0, 180, 360],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}>
+                  <Brain className="h-4 w-4 text-primary" />
+                </motion.div>
                 <span className="text-sm font-medium">
                   Artha is thinking...
                 </span>
@@ -532,19 +715,24 @@ export default function ChatbotInterface() {
       return timestampA - timestampB;
     });
 
-    console.log(
-      "Sorted Firebase messages by timestamp:",
-      sortedEntries.map(([id, msg]) => ({ id, timestamp: msg.timestamp }))
-    );
+    // console.log(
+    //   "Sorted Firebase messages by timestamp:",
+    //   sortedEntries.map(([id, msg]) => ({ id, timestamp: msg.timestamp }))
+    // );
 
     sortedEntries.forEach(([messageId, messageData]) => {
       // Use Firebase timestamps (plural) field correctly
       const firebaseTimestamp =
         messageData.timestamps || messageData.timestamp || 0;
 
-      console.log(
-        `Processing message ${messageId}: Firebase timestamp = ${firebaseTimestamp}, type = ${typeof firebaseTimestamp}`
-      );
+      console.log(`Processing message ${messageId}:`, {
+        timestamp: firebaseTimestamp,
+        hasResponse: !!messageData.llm_response,
+        hasThinking: !!messageData.llm_thinking,
+        thinkingPreview: messageData.llm_thinking?.substring(0, 100) + '...',
+        responsePreview: messageData.llm_response?.substring(0, 100) + '...'
+      });
+
 
       // Add user message if exists
       if (messageData.query_user) {
@@ -557,7 +745,7 @@ export default function ChatbotInterface() {
         });
       }
 
-      // Add AI response if exists
+      // Add AI response if exists  
       if (messageData.llm_response) {
         messages.push({
           id: `${messageId}-ai`,
@@ -565,6 +753,7 @@ export default function ChatbotInterface() {
           isUser: false,
           timestamp: firebaseTimestamp, // Use exact same Firebase timestamp
           messageId: messageId,
+          thinking: messageData.llm_thinking, // Include thinking process
         });
       }
     });
@@ -636,16 +825,12 @@ export default function ChatbotInterface() {
           })
           .sort((a, b) => b.timestamp - a.timestamp);
 
-        console.log(
-          "Auto-selecting most recent chat:",
-          sortedChats[0]?.sessionId,
-          "with timestamp:",
-          sortedChats[0]?.timestamp
-        );
         setActiveSession(sortedChats[0]?.sessionId || chatIds[0]);
       }
     }
   }, [firebaseUser?.chats, activeSession]);
+
+  console.log("Active session:", firebaseUser?.chats?.[activeSession]);
 
   // Real-time updates - watch for changes in Firebase data
   useEffect(() => {
@@ -656,7 +841,6 @@ export default function ChatbotInterface() {
       // Only update if messages actually changed
       if (JSON.stringify(transformedMessages) !== JSON.stringify(messages)) {
         setMessages(transformedMessages);
-        console.log("Real-time update for session:", activeSession);
       }
     }
   }, [firebaseUser?.chats, activeSession]);
@@ -856,7 +1040,7 @@ export default function ChatbotInterface() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background overflow-hidden">
       {/* Sidebar */}
       <ChatSidebar
         userId={userId}
@@ -868,9 +1052,9 @@ export default function ChatbotInterface() {
       />
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Header */}
-        <div className="border-b border-border bg-card p-4">
+        <div className="border-b border-border bg-card p-4 pb-6 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {sidebarCollapsed && (
@@ -905,14 +1089,19 @@ export default function ChatbotInterface() {
               )}
             </div>
             <div className="flex items-center gap-2">
-              {firebaseUser && (
-                <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
-                  {Object.keys(firebaseUser.chats || {}).length} chats
-                </Badge>
+              {/* Check if current session has thinking bubbles */}
+              {activeSession && firebaseUser?.chats?.[activeSession] && (
+                (() => {
+                  const currentSessionData = firebaseUser.chats[activeSession];
+                  const hasThinking = Object.values(currentSessionData || {}).some((msg: any) => msg.llm_thinking);
+                  return hasThinking ? (
+                    <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                      <Brain className="h-3 w-3 mr-1" />
+                      Thinking Available
+                    </Badge>
+                  ) : null;
+                })()
               )}
-              {/* <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">
-                Firebase Connected
-              </Badge> */}
               <Button variant="ghost" size="sm">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -921,8 +1110,8 @@ export default function ChatbotInterface() {
         </div>
 
         {/* Messages - Rendered from Firebase */}
-        <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-          <div className="max-w-4xl mx-auto space-y-6">
+        <ScrollArea className="flex-1 min-h-0" ref={scrollAreaRef}>
+          <div className="w-full space-y-6 p-4">
             {messages?.length === 0 && (
               <div className="text-center py-8">
                 <Database className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
@@ -934,13 +1123,13 @@ export default function ChatbotInterface() {
             {messages.map((message) => {
               return <MessageBubble key={message.id} message={message} />;
             })}
-            <ThinkingIndicator steps={thinkingSteps} isVisible={isLoading} />
+            <LiveThinkingIndicator steps={thinkingSteps} isVisible={isLoading} />
           </div>
         </ScrollArea>
 
         {/* Input Area */}
-        <div className="border-t border-border bg-card p-4">
-          <div className="max-w-4xl mx-auto">
+        <div className="border-t border-border bg-card p-4 flex-shrink-0">
+          <div className="w-full">
             {/* Firebase Data Debug Info */}
             {/* {activeSession && firebaseUser?.chats?.[activeSession] && (
               <div className="mb-3 p-2 bg-accent/20 rounded-lg text-xs">

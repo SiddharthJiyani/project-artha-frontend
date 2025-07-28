@@ -38,7 +38,7 @@ export default function MainLayout({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="flex-1 p-6 md:p-8"
+              className={`flex-1 ${pathname === '/chat' ? '' : 'p-6 md:p-8'}`}
             >
               {children}
             </MotionMain>
