@@ -15,7 +15,7 @@ interface FiMcpLoginProps {
 export default function FiMcpLogin({
   onLoginSuccess,
   onClose,
-  mcpServerUrl = 'https://artha-mcp-server.onrender.com'
+  mcpServerUrl = 'http://localhost:8080'
 }: FiMcpLoginProps) {
   const [status, setStatus] = useState('Opening login window...');
   const popupRef = useRef<Window | null>(null);

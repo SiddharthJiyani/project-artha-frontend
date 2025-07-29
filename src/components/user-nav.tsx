@@ -33,17 +33,16 @@ export default function UserNav() {
   };
 
   const handleLogOut = () => {
+    // Logout immediately first
+    logout();
+    
     toast({
       title: 'Logged Out',
       description: 'You have successfully logged out.',
     });
 
+    // Force page reload to clear any cached state
     window.location.href = '/';
-
-    // Small delay to ensure toast is rendered before state change
-    setTimeout(() => {
-      logout();
-    }, 100);
   };
 
   return (

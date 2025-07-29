@@ -21,6 +21,7 @@ import {
   ChatInput,
   ChatHeader,
   ConnectionStatus,
+  useTypewriterAnimation,
   getChatSuggestions,
   transformFirebaseMessages,
   type Message,
@@ -41,9 +42,16 @@ export default function ChatbotInterface() {
   const [isShowingThinking, setIsShowingThinking] = useState(false);
   const [waitingForResponse, setWaitingForResponse] = useState(false);
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
-  const [isNewChatMode, setIsNewChatMode] = useState(false); // Track if user wants a fresh new chat
-  const [pendingMessages, setPendingMessages] = useState<Message[]>([]); // Track locally added messages not yet in Firebase
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Use typewriter animation hook
+  const {
+    thinkingSteps,
+    currentStepText,
+    isTyping,
+    startTypewriterAnimation,
+    resetAnimation,
+  } = useTypewriterAnimation();
 
   // Use existing Firebase hooks
   const userId = phoneNumber || "1313131313"; // fallback for testing
@@ -51,14 +59,14 @@ export default function ChatbotInterface() {
   const { chats, loading: chatsLoading } = useUserChats(userId);
   const { financialSummary } = useFinancialSummary(userId);
 
-  // Load messages for active session from Firebase - but stay in new chat mode if user wants it
+  // Load messages for active session from Firebase
   useEffect(() => {
-    if (activeSession && firebaseUser?.chats?.[activeSession] && !isNewChatMode) {
+    if (activeSession && firebaseUser?.chats?.[activeSession]) {
       console.log("Loading messages for session:", activeSession);
       const chatData = firebaseUser.chats[activeSession];
       const transformedMessages = transformFirebaseMessages(chatData);
       setMessages(transformedMessages);
-    } else if (!activeSession || isNewChatMode) {
+    } else if (!activeSession) {
       // Default welcome message for new chat
       setMessages([
         {
@@ -75,11 +83,11 @@ export default function ChatbotInterface() {
         },
       ]);
     }
-  }, [activeSession, firebaseUser, isNewChatMode]);
+  }, [activeSession, firebaseUser]);
 
-  // Auto-select first chat session when Firebase data loads (but NOT when user wants new chat)
+  // Auto-select first chat session when Firebase data loads
   useEffect(() => {
-    if (firebaseUser?.chats && !activeSession && !pendingSessionId && !waitingForResponse && !isNewChatMode) {
+    if (firebaseUser?.chats && !activeSession) {
       const chatIds = Object.keys(firebaseUser.chats);
       if (chatIds.length > 0) {
         // Get the most recent chat by finding the latest timestamp
@@ -104,16 +112,15 @@ export default function ChatbotInterface() {
           })
           .sort((a, b) => b.timestamp - a.timestamp);
 
-        console.log('Auto-selecting most recent chat session:', sortedChats[0]?.sessionId);
         setActiveSession(sortedChats[0]?.sessionId || chatIds[0]);
       }
     }
-  }, [firebaseUser?.chats, activeSession, pendingSessionId, waitingForResponse, isNewChatMode]);
+  }, [firebaseUser?.chats, activeSession]);
 
   // Real-time updates - watch for changes in Firebase data and handle thinking animation
   useEffect(() => {
     // Handle pending session ID (new chat) - watch for Firebase data to appear
-    if (pendingSessionId && firebaseUser?.chats?.[pendingSessionId]) {
+    if (pendingSessionId && firebaseUser?.chats?.[pendingSessionId] && !activeSession) {
       console.log('New chat session detected in Firebase:', pendingSessionId);
       setActiveSession(pendingSessionId);
       setPendingSessionId(null);
@@ -137,11 +144,21 @@ export default function ChatbotInterface() {
         
         // Check if we have thinking but no response yet (thinking phase)
         if (messageData.llm_thinking && !messageData.llm_response && waitingForResponse) {
-          if (!isShowingThinking) {
-            console.log('Starting simple loading animation for message:', messageId);
-            setCurrentThinkingMessage("Artha is thinking...");
+          if (currentThinkingMessage !== messageId && !isShowingThinking) {
+            console.log('Starting thinking animation for message:', messageId);
+            setCurrentThinkingMessage(messageId);
             setIsShowingThinking(true);
             setIsLoading(false); // Stop general loading, start thinking animation
+            
+            // Prepare thinking steps for typewriter effect
+            const thinkingText = messageData.llm_thinking;
+            const steps = thinkingText
+              .split(/\n+/)
+              .map(step => step.trim())
+              .filter(step => step.length > 0)
+              .slice(0, 8); // Allow more steps
+            
+            startTypewriterAnimation(steps);
           }
         }
         
@@ -150,15 +167,17 @@ export default function ChatbotInterface() {
           console.log('Response arrived from Firebase for message:', messageId);
           setWaitingForResponse(false);
           setIsLoading(false);
-          setIsShowingThinking(false);
-          setCurrentThinkingMessage(null);
           
-          // Clear pending messages since Firebase now has the complete conversation
-          setPendingMessages([]);
+          // If thinking animation is still ongoing, let it complete
+          if (isShowingThinking && currentThinkingMessage === messageId) {
+            console.log('Response ready, but letting thinking animation complete...');
+            return;
+          }
           
           // Update messages with the complete data
           const transformedMessages = transformFirebaseMessages(chatData);
           setMessages(transformedMessages);
+          setCurrentThinkingMessage(null);
           return;
         }
       }
@@ -167,19 +186,10 @@ export default function ChatbotInterface() {
       if (!waitingForResponse && !isShowingThinking) {
         const transformedMessages = transformFirebaseMessages(chatData);
         
-        // Merge Firebase messages with any pending local messages
-        const allMessages = [...transformedMessages, ...pendingMessages].sort((a, b) => a.timestamp - b.timestamp);
-        
         // Only update if messages actually changed
-        if (JSON.stringify(allMessages) !== JSON.stringify(messages)) {
-          setMessages(allMessages);
+        if (JSON.stringify(transformedMessages) !== JSON.stringify(messages)) {
+          setMessages(transformedMessages);
         }
-      }
-    } else if (pendingMessages.length > 0) {
-      // If no Firebase data but we have pending messages, show them immediately
-      const allMessages = [...messages.filter(m => m.id === "welcome"), ...pendingMessages].sort((a, b) => a.timestamp - b.timestamp);
-      if (JSON.stringify(allMessages) !== JSON.stringify(messages)) {
-        setMessages(allMessages);
       }
     }
   }, [firebaseUser?.chats, activeSession, currentThinkingMessage, isShowingThinking, waitingForResponse, pendingSessionId]);
@@ -211,13 +221,6 @@ export default function ChatbotInterface() {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    console.log('📤 Sending message...', {
-      activeSession,
-      pendingSessionId,
-      waitingForResponse,
-      messagePreview: input.substring(0, 50)
-    });
-
     const userMessage: Message = {
       id: Date.now().toString(),
       text: input,
@@ -225,8 +228,7 @@ export default function ChatbotInterface() {
       timestamp: Date.now(),
     };
 
-    // Add to pending messages for immediate display
-    setPendingMessages((prev) => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     const messageText = input;
     setInput("");
     setIsLoading(true);
@@ -238,13 +240,12 @@ export default function ChatbotInterface() {
       if (!sessionId) {
         sessionId = arthaApi.generateSessionId();
         setPendingSessionId(sessionId);
-        console.log('🆔 Generated new session ID:', sessionId);
+        console.log('Generated new session ID:', sessionId);
       }
 
-      console.log('🚀 Sending message to Artha API...', {
+      console.log('Sending message to Artha API...', {
         userId,
         sessionId,
-        isNewChat: !activeSession,
         messagePreview: messageText.substring(0, 100)
       });
 
@@ -255,17 +256,15 @@ export default function ChatbotInterface() {
         messageText
       );
 
-      console.log('✅ Artha API response:', apiResponse);
+      console.log('Artha API response:', apiResponse);
 
       if (apiResponse.status === 'success') {
-        console.log('📨 Message sent successfully, waiting for Firebase response...');
+        console.log('Message sent successfully, waiting for Firebase response...');
         
-        // Set active session immediately for new chats to avoid auto-selection issues
+        // Set active session if this was a new chat
         if (!activeSession && sessionId) {
-          console.log('🎯 Setting active session to:', sessionId);
+          console.log('Setting active session to:', sessionId);
           setActiveSession(sessionId);
-          setPendingSessionId(null); // Clear pending since we're setting active
-          setIsNewChatMode(false); // Exit new chat mode since we now have an active session
         }
         
         // The actual AI response will come through Firebase real-time updates
@@ -276,7 +275,7 @@ export default function ChatbotInterface() {
       }
 
     } catch (error) {
-      console.error("❌ Failed to send message:", error);
+      console.error("Failed to send message:", error);
       
       const errorResponse: Message = {
         id: (Date.now() + 1).toString(),
@@ -293,30 +292,20 @@ export default function ChatbotInterface() {
 
   // Handle new chat creation
   const handleNewChat = () => {
-    console.log('🆕 Starting FRESH new chat...');
-    console.log('Current state before new chat:', {
-      activeSession,
-      pendingSessionId,
-      waitingForResponse,
-      isLoading,
-      existingChats: Object.keys(firebaseUser?.chats || {}).length
-    });
-    
-    // FORCE new chat mode - prevent any auto-selection
-    setIsNewChatMode(true);
+    console.log('Starting new chat...');
     setActiveSession("");
     setPendingSessionId(null);
     setWaitingForResponse(false);
     setIsLoading(false);
     setIsShowingThinking(false);
     setCurrentThinkingMessage(null);
-    setPendingMessages([]); // Clear any pending messages
+    resetAnimation();
     
     // Set welcome message for new chat
     setMessages([
       {
         id: "welcome",
-        text: `🆕 Fresh New Chat! I'm Artha, your intelligent financial advisor. I have access to your complete financial profile${
+        text: `Welcome! I'm Artha, your intelligent financial advisor. I have access to your complete financial profile${
           firebaseUser
             ? ` and can see you have ${
                 Object.keys(firebaseUser.chats || {}).length
@@ -327,21 +316,12 @@ export default function ChatbotInterface() {
         timestamp: Date.now(),
       },
     ]);
-    
-    console.log('✅ Fresh new chat state set successfully - no auto-selection will occur');
   };
 
   const handleSuggestionClick = (suggestion: string) => {
     if (isLoading || waitingForResponse) return;
     setInput(suggestion);
     setTimeout(() => handleSend(), 100); // Small delay to ensure input is set
-  };
-
-  const handleSessionSelect = (sessionId: string) => {
-    console.log('📋 User manually selected session:', sessionId);
-    setIsNewChatMode(false); // Exit new chat mode when user selects existing session
-    setActiveSession(sessionId);
-    setPendingMessages([]); // Clear pending messages when switching sessions
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -365,7 +345,7 @@ export default function ChatbotInterface() {
         viewport.scrollTop = viewport.scrollHeight;
       }
     }
-  }, [messages, pendingMessages, isShowingThinking, waitingForResponse]);
+  }, [messages, thinkingSteps]);
 
   if (!isAuthenticated) {
     return (
@@ -398,7 +378,7 @@ export default function ChatbotInterface() {
       <ChatSidebar
         userId={userId}
         activeSession={activeSession}
-        onSessionSelect={handleSessionSelect}
+        onSessionSelect={setActiveSession}
         onNewChat={handleNewChat}
         isCollapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -408,12 +388,10 @@ export default function ChatbotInterface() {
       <div className="flex-1 flex flex-col min-h-0">
         {/* Header */}
         <ChatHeader 
-          activeSession={isNewChatMode ? "NEW_CHAT" : activeSession}
+          activeSession={activeSession}
           firebaseUser={firebaseUser}
           sidebarCollapsed={sidebarCollapsed}
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
-          hasThinking={activeSession && firebaseUser?.chats?.[activeSession] ? 
-            Object.values(firebaseUser.chats[activeSession] || {}).some((msg: any) => msg.llm_thinking) : false}
         />
 
         {/* Messages - Rendered from Firebase */}
@@ -433,20 +411,26 @@ export default function ChatbotInterface() {
             
             {/* Show thinking animation when Firebase thinking arrives but response hasn't */}
             <LiveThinkingIndicator 
+              steps={thinkingSteps} 
               isVisible={isShowingThinking}
-              message={currentThinkingMessage || undefined}
+              currentStepText={currentStepText}
+              isTyping={isTyping}
             />
             
             {/* Show waiting animation for API response */}
             <LiveThinkingIndicator 
+              steps={[]} 
               isVisible={waitingForResponse && !isShowingThinking}
-              message="Waiting for response..."
+              currentStepText=""
+              isTyping={false}
             />
             
             {/* Show loading animation for manual messages */}
             <LiveThinkingIndicator 
+              steps={[]} 
               isVisible={isLoading && !isShowingThinking && !waitingForResponse}
-              message="Loading..."
+              currentStepText=""
+              isTyping={false}
             />
           </div>
         </ScrollArea>
@@ -457,37 +441,27 @@ export default function ChatbotInterface() {
             {/* Suggestions */}
             <ChatSuggestions 
               suggestions={suggestions}
-              isVisible={!isLoading && !waitingForResponse && suggestions.length > 0}
+              isLoading={isLoading}
+              waitingForResponse={waitingForResponse}
               onSuggestionClick={handleSuggestionClick}
             />
 
             {/* Chat Input */}
             <ChatInput 
               input={input}
-              onInputChange={setInput}
-              onSend={handleSend}
-              onKeyPress={handleKeyPress}
-              placeholder={
-                waitingForResponse 
-                  ? "Waiting for Artha AI response..."
-                  : `Ask Artha about your finances${
-                      firebaseUser
-                        ? ` (${
-                            Object.keys(firebaseUser.chats || {}).length
-                          } conversations available)`
-                        : ""
-                    }...`
-              }
-              disabled={isLoading || waitingForResponse}
+              setInput={setInput}
               isLoading={isLoading}
               waitingForResponse={waitingForResponse}
+              onSend={handleSend}
+              onKeyPress={handleKeyPress}
+              firebaseUser={firebaseUser}
             />
 
             {/* Connection Status */}
             <ConnectionStatus 
               waitingForResponse={waitingForResponse}
               firebaseUser={firebaseUser}
-              activeSession={isNewChatMode ? "NEW_CHAT" : activeSession}
+              activeSession={activeSession}
               pendingSessionId={pendingSessionId}
             />
           </div>

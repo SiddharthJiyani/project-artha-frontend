@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     });
 
     // Forward the request to the Go server
-    const response = await fetch('https://artha-mcp-server.onrender.com/mcp/stream', {
+    const response = await fetch('http://localhost:8080/mcp/stream', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
