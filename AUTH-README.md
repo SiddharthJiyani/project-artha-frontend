@@ -12,7 +12,7 @@ The authentication flow is based on a **popup window** that directs the user to 
 The flow works as follows:
 ```
 1. User clicks "Log In" in the Next.js app.
-2. The app opens a popup window pointing to the Go server's login page (e.g., http://localhost:8080/mockWebPage?sessionId=...).
+2. The app opens a popup window pointing to the Go server's login page (e.g., http://artha-mcp-server.onrender.com/mockWebPage?sessionId=...).
 3. The Next.js app now actively listens for a message from this popup.
 4. User interacts with the Go server's page in the popup, enters a valid test phone number, and submits.
 5. The Go server authenticates the user, associates the phone number with the session ID, and redirects the popup to a `login_successful.html` page.
@@ -29,7 +29,7 @@ The flow works as follows:
     git clone https://github.com/epiFi/fi-mcp-dev.git
     ```
 2.  **Follow its Setup Instructions**: Navigate into the cloned directory and follow the `README.md` file within that project to install dependencies and start the Go server.
-3.  **Ensure it's Running**: The Go server should be running on `http://localhost:8080`.
+3.  **Ensure it's Running**: The Go server should be running on `http://artha-mcp-server.onrender.com`.
 
 ### Step 2: Start the Next.js App
 
@@ -43,7 +43,7 @@ npm run dev
 
 1.  Open the Artha app in your browser (`http://localhost:9002`).
 2.  Click the user icon in the top-right and select "Log In".
-3.  A popup window will appear, loading `http://localhost:8080/mockWebPage?sessionId=...`.
+3.  A popup window will appear, loading `http://artha-mcp-server.onrender.com/mockWebPage?sessionId=...`.
 4.  In the popup, enter one of the valid test phone numbers from the Fi-MCP documentation (e.g., `8000000000`) and click "Submit".
 5.  The popup page will show "Login Successful!". The main application window will detect the success message, close the popup automatically, and update to show you as logged in.
 6.  You can now test authenticated functionality, like making API calls from the dashboard.

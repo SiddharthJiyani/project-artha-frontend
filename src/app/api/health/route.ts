@@ -2,7 +2,7 @@
 export async function GET() {
   try {
     // Check if the Go server is running
-    const response = await fetch('http://localhost:8080/health', {
+    const response = await fetch('http://artha-mcp-server.onrender.com/health', {
       method: 'GET',
     });
 
