@@ -185,11 +185,68 @@ Return a high quality markdown which looks easy to read.`,
 });
 
 async function financialSummaryFlow(input: FinancialSummaryInput): Promise<FinancialSummaryOutput> {
-  try {
-    const {output} = await financialSummaryPrompt(input);
-    return output!;
-  } catch (error) {
-    console.error("Error in financialSummaryFlow:", error);
-    throw new Error("Financial summary analysis failed.");
+  const maxRetries = 3;
+  const models = ['googleai/gemini-1.5-flash', 'googleai/gemini-1.5-pro', 'googleai/gemini-2.0-flash'];
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    for (const model of models) {
+      try {
+        console.log(`Financial Summary - Attempt ${attempt + 1}/${maxRetries} with model: ${model}`);
+        
+        // Create a custom prompt with specific model
+        const customPrompt = ai.definePrompt({
+          name: `financialSummaryPrompt_${model.replace('googleai/', '').replace(/[.-]/g, '_')}_${Date.now()}`,
+          input: { schema: FinancialSummaryInputSchema },
+          output: { schema: FinancialSummaryOutputSchema },
+          model: model,
+          prompt: `You are Artha, an expert AI financial advisor. Analyze the comprehensive financial data and provide insightful summary.
+
+FINANCIAL PROFILE:
+Net Worth: {{{netWorth}}}
+Monthly Income: {{{monthlyIncome}}}
+Credit Score: {{{creditScore}}}
+Monthly EMI: {{{monthlyEMI}}}
+Idle Savings: {{{idleSavings}}}
+Collateral: {{{collateralAvailable}}}
+Payment Discipline: {{{paymentDiscipline}}}
+Financial Biases: {{{financialBiases}}}
+Investment Performance: {{{investmentPerformance}}}
+Asset Allocation: {{{assetAllocation}}}
+Risk Profile: {{{riskProfile}}}
+Tax Efficiency: {{{taxEfficiency}}}
+Liquidity Position: {{{liquidityPosition}}}
+
+Provide a comprehensive analysis with:
+1. OVERALL HEALTH: Clear assessment with specific financial metrics and ratios
+2. KEY CONCERNS: Critical risks and issues requiring immediate attention  
+3. ACTIONABLE RECOMMENDATIONS: Specific, prioritized action items with clear steps
+
+Use Indian financial context. Be specific with numbers and practical advice.
+Return a high quality markdown which looks easy to read.`
+        });
+        
+        const { output } = await customPrompt(input);
+        console.log(`Successfully generated financial summary with model: ${model}`);
+        return output!;
+        
+      } catch (error: any) {
+        console.error(`Financial Summary error with model ${model} on attempt ${attempt + 1}:`, error);
+        
+        // If it's a 503 error (overloaded), try the next model immediately
+        if (error?.status === 503 || error?.message?.includes('overloaded')) {
+          console.log(`Model ${model} is overloaded, trying next model...`);
+          continue;
+        }
+        
+        // For other errors, wait a bit before retrying
+        if (attempt < maxRetries - 1) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`Waiting ${delay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
   }
+  
+  throw new Error("Financial summary analysis failed after all retry attempts. All models are currently unavailable.");
 }

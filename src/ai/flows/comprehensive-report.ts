@@ -65,44 +65,44 @@ export type ComprehensiveReportInput = z.infer<typeof ComprehensiveReportInputSc
 
 // Comprehensive output schema with detailed sections
 const ComprehensiveReportOutputSchema = z.object({
-  executiveSummary: z.string().describe('High-level overview of financial health with key metrics and trends'),
+  executiveSummary: z.string().describe('Comprehensive 4-5 paragraph overview of financial health with detailed metrics, trends, strengths, concerns, and trajectory analysis. Should be substantial and informative, minimum 300 words.'),
   
-  strengths: z.string().describe('Key financial strengths and positive aspects'),
+  strengths: z.string().describe('Extensive 3-4 paragraph analysis of key financial strengths, positive aspects, successful strategies, and areas of excellence. Include specific metrics and comparisons. Minimum 250 words.'),
   
-  concerns: z.string().describe('Areas of concern and potential risks'),
+  concerns: z.string().describe('Detailed 3-4 paragraph assessment of areas of concern, potential risks, vulnerabilities, and improvement areas. Be specific about issues and their implications. Minimum 250 words.'),
   
-  opportunities: z.string().describe('Investment and financial growth opportunities'),
+  opportunities: z.string().describe('Comprehensive 3-4 paragraph analysis of investment opportunities, growth strategies, optimization potential, and wealth-building prospects with specific recommendations. Minimum 250 words.'),
   
   detailedAnalysis: z.object({
-    wealthBuilding: z.string().describe('Analysis of wealth building progress and strategies'),
-    riskManagement: z.string().describe('Risk assessment and management recommendations'),
-    taxOptimization: z.string().describe('Tax efficiency and optimization opportunities'),
-    retirementPlanning: z.string().describe('Retirement readiness and planning recommendations')
+    wealthBuilding: z.string().describe('Detailed 2-3 paragraph analysis of wealth building progress, strategies, and specific recommendations with timelines and expected outcomes. Minimum 200 words.'),
+    riskManagement: z.string().describe('Comprehensive 2-3 paragraph risk assessment and management recommendations including insurance, diversification, and mitigation strategies. Minimum 200 words.'),
+    taxOptimization: z.string().describe('Detailed 2-3 paragraph tax efficiency analysis and optimization opportunities with specific strategies and expected savings. Minimum 200 words.'),
+    retirementPlanning: z.string().describe('Thorough 2-3 paragraph retirement readiness assessment with detailed projections, recommendations, and action steps. Minimum 200 words.')
   }),
   
   actionPlan: z.object({
-    immediate: z.array(z.string()).describe('Actions to take within 30 days'),
-    shortTerm: z.array(z.string()).describe('Goals for next 3-6 months'),
-    longTerm: z.array(z.string()).describe('Strategic goals for 1-3 years')
+    immediate: z.array(z.string()).describe('5-7 specific actions to take within 30 days with detailed implementation steps'),
+    shortTerm: z.array(z.string()).describe('5-7 strategic goals for next 3-6 months with detailed implementation plans'),
+    longTerm: z.array(z.string()).describe('5-7 strategic objectives for 1-3 years with comprehensive roadmaps')
   }),
   
-  marketInsights: z.string().describe('Current market conditions and their impact on portfolio'),
+  marketInsights: z.string().describe('Detailed 2-3 paragraph analysis of current market conditions, sector recommendations, and portfolio impact with specific investment suggestions. Minimum 200 words.'),
   
   keyMetrics: z.object({
-    financialHealthScore: z.number().describe('Overall financial health score out of 100'),
-    diversificationScore: z.number().describe('Portfolio diversification score out of 100'),
-    goalProgressScore: z.number().describe('Progress towards financial goals out of 100')
+    financialHealthScore: z.number().describe('Overall financial health score out of 100 with detailed explanation of scoring factors'),
+    diversificationScore: z.number().describe('Portfolio diversification score out of 100 with analysis of current allocation'),
+    goalProgressScore: z.number().describe('Progress towards financial goals out of 100 with specific assessments')
   }),
   
-  personalizedTips: z.array(z.string()).describe('Personalized financial tips based on user profile'),
+  personalizedTips: z.array(z.string()).describe('8-10 highly specific, actionable financial tips with implementation steps and expected benefits tailored to user profile'),
   
-  redFlags: z.array(z.string()).describe('Critical issues requiring immediate attention'),
+  redFlags: z.array(z.string()).describe('5-7 critical issues requiring immediate attention with specific remediation steps and timelines'),
   
-  achievements: z.array(z.string()).describe('Financial milestones and positive achievements'),
+  achievements: z.array(z.string()).describe('5-7 financial milestones and positive accomplishments with specific metrics and peer comparisons'),
   
-  benchmarkComparison: z.string().describe('How user compares to peers in similar age/income bracket'),
+  benchmarkComparison: z.string().describe('Detailed 2-3 paragraph comparison with peers in similar age/income bracket including specific metrics and percentile rankings. Minimum 200 words.'),
   
-  confidenceLevel: z.string().describe('AI confidence level in the analysis')
+  confidenceLevel: z.string().describe('AI confidence level in the analysis with explanation of data quality and reliability factors')
 });
 
 export type ComprehensiveReportOutput = z.infer<typeof ComprehensiveReportOutputSchema>;
@@ -253,11 +253,108 @@ Format everything in clear, professional markdown that's easy to read and unders
 });
 
 async function comprehensiveReportFlow(input: ComprehensiveReportInput): Promise<ComprehensiveReportOutput> {
-  try {
-    const { output } = await comprehensiveReportPrompt(input);
-    return output!;
-  } catch (error) {
-    console.error("Error in comprehensiveReportFlow:", error);
-    throw new Error("Comprehensive report generation failed.");
+  const maxRetries = 3;
+  const models = ['googleai/gemini-2.0-flash', 'googleai/gemini-1.5-flash', 'googleai/gemini-1.5-pro'];
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    for (const model of models) {
+      try {
+        console.log(`Attempt ${attempt + 1}/${maxRetries} with model: ${model}`);
+        
+        // Create a custom prompt with specific model
+        const customPrompt = ai.definePrompt({
+          name: `comprehensiveReportPrompt_${model.replace('googleai/', '').replace(/[.-]/g, '_')}_${Date.now()}`,
+          input: { schema: ComprehensiveReportInputSchema },
+          output: { schema: ComprehensiveReportOutputSchema },
+          model: model,
+          config: {
+            maxOutputTokens: 8000, // Increase token limit for longer responses
+            temperature: 0.7, // Balanced creativity and consistency
+          },
+          prompt: `You are Artha, an expert AI financial advisor with deep expertise in Indian financial markets and personal finance. 
+
+Analyze the comprehensive financial data provided and generate a detailed, professional financial report. This should be a COMPREHENSIVE and DETAILED report, not a brief summary.
+
+FINANCIAL DATA:
+Net Worth: ₹{{{netWorthData.totalNetWorth}}} with {{{netWorthData.assetBreakdown.length}}} asset categories
+Monthly Income: ₹{{{transactionData.averageMonthlyIncome}}}
+Investment Portfolio: {{{investmentData.mutualFunds.length}}} mutual fund schemes, Risk Profile: {{{investmentData.riskProfile}}}
+Credit Profile: Score {{{creditData.creditScore}}}, Utilization {{{creditData.creditUtilization}}}%
+EPF Balance: ₹{{{epfData.totalBalance}}}
+Emergency Fund Ratio: {{{personalFinanceMetrics.emergencyFundRatio}}}
+Savings Rate: {{{personalFinanceMetrics.savingsRate}}}%
+Debt-to-Income: {{{personalFinanceMetrics.debtToIncomeRatio}}}
+
+Generate a COMPREHENSIVE and DETAILED financial report with extensive analysis. Each section should be thorough and informative:
+
+1. EXECUTIVE SUMMARY: Write a detailed 4-5 paragraph overview covering financial health, key metrics, major strengths, primary concerns, and overall trajectory. Include specific numbers and percentages.
+
+2. STRENGTHS: Provide an extensive analysis (3-4 paragraphs) of what's working well in their financial profile. Highlight positive metrics, good financial habits, successful investments, and areas where they excel compared to peers.
+
+3. CONCERNS: Write a detailed assessment (3-4 paragraphs) of areas that need attention. Be specific about risks, missed opportunities, suboptimal allocations, and potential financial vulnerabilities.
+
+4. OPPORTUNITIES: Comprehensive analysis (3-4 paragraphs) of growth and optimization opportunities. Include specific investment suggestions, tax optimization strategies, and wealth-building opportunities with expected returns.
+
+5. DETAILED ANALYSIS: This should be the most comprehensive section with 4 detailed sub-sections:
+   - WEALTH BUILDING: Detailed strategy analysis with specific recommendations, timelines, and expected outcomes (2-3 paragraphs)
+   - RISK MANAGEMENT: Comprehensive risk assessment with specific mitigation strategies and insurance recommendations (2-3 paragraphs)
+   - TAX OPTIMIZATION: Detailed tax efficiency analysis with specific strategies for tax savings and optimization (2-3 paragraphs)
+   - RETIREMENT PLANNING: Thorough retirement readiness assessment with detailed projections and recommendations (2-3 paragraphs)
+
+6. ACTION PLAN: Detailed action items with specific steps, timelines, and expected outcomes:
+   - IMMEDIATE (next 30 days): 5-7 specific, actionable items with exact steps
+   - SHORT-TERM (3-6 months): 5-7 strategic goals with detailed implementation plans
+   - LONG-TERM (1-3 years): 5-7 strategic objectives with comprehensive roadmaps
+
+7. MARKET INSIGHTS: Detailed analysis (2-3 paragraphs) of current market conditions, sector-specific recommendations, and their impact on the portfolio with specific investment suggestions.
+
+8. KEY METRICS: Provide detailed scores with explanations:
+   - Financial Health Score (0-100): Include detailed explanation of scoring factors
+   - Diversification Score (0-100): Analyze current allocation and improvement areas
+   - Goal Progress Score (0-100): Assess progress towards financial objectives
+
+9. PERSONALIZED TIPS: Provide 8-10 highly specific, actionable tips tailored to their exact financial situation. Each tip should include implementation steps and expected benefits.
+
+10. RED FLAGS: Identify 5-7 critical issues requiring immediate attention with specific remediation steps and timelines.
+
+11. ACHIEVEMENTS: Recognize 5-7 financial milestones and positive accomplishments with specific metrics and comparisons.
+
+12. BENCHMARK COMPARISON: Detailed comparison (2-3 paragraphs) with peers in similar age/income bracket, including specific metrics and percentile rankings.
+
+IMPORTANT FORMATTING REQUIREMENTS:
+- Use extensive markdown formatting for clarity and readability
+- Include specific numbers, percentages, and rupee amounts throughout
+- Make each section substantial and comprehensive - minimum 200-300 words per major section
+- Use bullet points, tables, and structured formatting where appropriate
+- Be specific about Indian financial products, tax implications, and market conditions
+- Provide actionable, practical advice with clear implementation steps
+- Include specific timeframes and expected outcomes for all recommendations
+
+This should be a professional, comprehensive financial advisory report that provides significant value to the user. Do not provide brief summaries - each section should be detailed and informative.`
+        });
+        
+        const { output } = await customPrompt(input);
+        console.log(`Successfully generated report with model: ${model}`);
+        return output!;
+        
+      } catch (error: any) {
+        console.error(`Error with model ${model} on attempt ${attempt + 1}:`, error);
+        
+        // If it's a 503 error (overloaded), try the next model immediately
+        if (error?.status === 503 || error?.message?.includes('overloaded')) {
+          console.log(`Model ${model} is overloaded, trying next model...`);
+          continue;
+        }
+        
+        // For other errors, wait a bit before retrying
+        if (attempt < maxRetries - 1) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`Waiting ${delay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
   }
+  
+  throw new Error("Comprehensive report generation failed after all retry attempts. All models are currently unavailable.");
 }
